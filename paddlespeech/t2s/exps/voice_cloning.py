@@ -1,3 +1,4 @@
+# coding=utf-8
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,10 +45,24 @@ def gen_random_embed(use_ecapa: bool=False):
 
 
 def voice_cloning(args):
+    
+    am ='fastspeech2_aishell3'
+    am_config = "D:\\workplaces\\PaddleModelData\\fastspeech2_aishell3_ckpt_vc2_1.2.0\\default.yaml"
+    am_ckpt = 'D:\\workplaces\\PaddleModelData\\fastspeech2_aishell3_ckpt_vc2_1.2.0\\snapshot_iter_96400.pdz'
+    am_stat = 'D:\\workplaces\\PaddleModelData\\fastspeech2_aishell3_ckpt_vc2_1.2.0\\speech_stats.npy'
+    phones_dict = "D:\\workplaces\\PaddleModelData\\fastspeech2_aishell3_ckpt_vc2_1.2.0\\phone_id_map.txt"
+
+    voc = 'pwgan_aishell3'
+    voc_config = 'D:/workplaces/PaddleModelData/pwg_aishell3_ckpt_0.5/default.yaml'
+    voc_ckpt = 'D:/workplaces/PaddleModelData/pwg_aishell3_ckpt_0.5/snapshot_iter_1000000.pdz'
+    voc_stat = 'D:/workplaces/PaddleModelData/pwg_aishell3_ckpt_0.5/feats_stats.npy'
+    output_dir = "D:/workplaces/test/make/output"
+    ge2e_params_path = ""
+
     # Init body.
-    with open(args.am_config) as f:
+    with open(am_config) as f:
         am_config = CfgNode(yaml.safe_load(f))
-    with open(args.voc_config) as f:
+    with open(voc_config) as f:
         voc_config = CfgNode(yaml.safe_load(f))
 
     print("========Args========")
@@ -56,75 +71,84 @@ def voice_cloning(args):
     print(am_config)
     print(voc_config)
 
-    output_dir = Path(args.output_dir)
+    output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    input_dir = Path(args.input_dir)
+    # input_dir = "D:\\workplaces\\PaddleModelData\\corpus"
+    # input_dir = "D:\\wueryong\\onedrive\OneDrive - zut.edu.cn\\A_Doing\\corpus"
+    input_dir = "D:\\workplaces\\test\\liyanqun\\test"
+    input_dir = Path(input_dir)
 
     # speaker encoder
-    if args.use_ecapa:
-        vec_executor = VectorExecutor()
-        # warm up
-        vec_executor(
-            audio_file=input_dir / os.listdir(input_dir)[0], force_yes=True)
-        print("ECAPA-TDNN Done!")
+    # if args.use_ecapa:
+    vec_executor = VectorExecutor()
+    # warm up
+    print(">>>>>>>")
+    print()
+
+
+     
+
+    vec_executor(audio_file=input_dir / os.listdir(input_dir)[0])
+    print(">>>>>ECAPA-TDNN Done!")
+
+    print("ECAPA-TDNN Done!")
     # use GE2E
-    else:
-        p = SpeakerVerificationPreprocessor(
-            sampling_rate=16000,
-            audio_norm_target_dBFS=-30,
-            vad_window_length=30,
-            vad_moving_average_width=8,
-            vad_max_silence_length=6,
-            mel_window_length=25,
-            mel_window_step=10,
-            n_mels=40,
-            partial_n_frames=160,
-            min_pad_coverage=0.75,
-            partial_overlap_ratio=0.5)
-        print("Audio Processor Done!")
+    # else:
+        # p = SpeakerVerificationPreprocessor(
+        #     sampling_rate=16000,
+        #     audio_norm_target_dBFS=-30,
+        #     vad_window_length=30,
+        #     vad_moving_average_width=8,
+        #     vad_max_silence_length=6,
+        #     mel_window_length=25,
+        #     mel_window_step=10,
+        #     n_mels=40,
+        #     partial_n_frames=160,
+        #     min_pad_coverage=0.75,
+        #     partial_overlap_ratio=0.5)
+        # print("Audio Processor Done!")
 
-        speaker_encoder = LSTMSpeakerEncoder(
-            n_mels=40, num_layers=3, hidden_size=256, output_size=256)
-        speaker_encoder.set_state_dict(paddle.load(args.ge2e_params_path))
-        speaker_encoder.eval()
-        print("GE2E Done!")
+    #     speaker_encoder = LSTMSpeakerEncoder(
+    #         n_mels=40, num_layers=3, hidden_size=256, output_size=256)
+    #     speaker_encoder.set_state_dict(paddle.load(args.ge2e_params_path))
+    #     speaker_encoder.eval()
+    #     print("GE2E Done!")
 
-    frontend = Frontend(phone_vocab_path=args.phones_dict)
+    frontend = Frontend(phone_vocab_path=phones_dict)
     print("frontend done!")
 
-    sentence = args.text
+    sentence = "今年天气怎么样？"
     input_ids = frontend.get_input_ids(sentence, merge_sentences=True)
     phone_ids = input_ids["phone_ids"][0]
 
     # acoustic model
     am_inference = get_am_inference(
-        am=args.am,
+        am=am,
         am_config=am_config,
-        am_ckpt=args.am_ckpt,
-        am_stat=args.am_stat,
-        phones_dict=args.phones_dict)
+        am_ckpt=am_ckpt,
+        am_stat=am_stat,
+        phones_dict=phones_dict)
 
     # vocoder
     voc_inference = get_voc_inference(
-        voc=args.voc,
+        voc=voc,
         voc_config=voc_config,
-        voc_ckpt=args.voc_ckpt,
-        voc_stat=args.voc_stat)
+        voc_ckpt=voc_ckpt,
+        voc_stat=voc_stat)
 
     for name in os.listdir(input_dir):
         utt_id = name.split(".")[0]
         ref_audio_path = input_dir / name
-        if args.use_ecapa:
-            spk_emb = vec_executor(audio_file=ref_audio_path, force_yes=True)
-            spk_emb = paddle.to_tensor(spk_emb)
+        # if args.use_ecapa:
+        spk_emb = vec_executor(audio_file=ref_audio_path)
+        spk_emb = paddle.to_tensor(spk_emb)
         # GE2E
-        else:
-            mel_sequences = p.extract_mel_partials(
-                p.preprocess_wav(ref_audio_path))
-            with paddle.no_grad():
-                spk_emb = speaker_encoder.embed_utterance(
-                    paddle.to_tensor(mel_sequences))
+        # else:
+        #     mel_sequences = p.extract_mel_partials(
+        #         p.preprocess_wav(ref_audio_path))
+        #     with paddle.no_grad():
+        #         spk_emb = speaker_encoder.embed_utterance(
+        #             paddle.to_tensor(mel_sequences))
         with paddle.no_grad():
             wav = voc_inference(am_inference(phone_ids, spk_emb=spk_emb))
 
@@ -135,16 +159,16 @@ def voice_cloning(args):
         print(f"{utt_id} done!")
 
     # generate 5 random_spk_emb
-    # for i in range(5):
-    #     random_spk_emb = gen_random_embed(args.use_ecapa)
-    #     utt_id = "random_spk_emb"
-    #     with paddle.no_grad():
-    #         wav = voc_inference(am_inference(phone_ids, spk_emb=random_spk_emb))
-    #     sf.write(
-    #         str(output_dir / (utt_id + "_" + str(i) + ".wav")),
-    #         wav.numpy(),
-    #         samplerate=am_config.fs)
-    # print(f"{utt_id} done!")
+    for i in range(5):
+        random_spk_emb = gen_random_embed(True)
+        utt_id = "random_spk_emb"
+        with paddle.no_grad():
+            wav = voc_inference(am_inference(phone_ids, spk_emb=random_spk_emb))
+        sf.write(
+            str(output_dir / (utt_id + "_" + str(i) + ".wav")),
+            wav.numpy(),
+            samplerate=am_config.fs)
+    print(f"{utt_id} done!")
 
 
 def parse_args():
@@ -157,7 +181,7 @@ def parse_args():
         choices=['fastspeech2_aishell3', 'tacotron2_aishell3'],
         help='Choose acoustic model type of tts task.')
     parser.add_argument(
-        '--am_config', type=str, default=None, help='Config of acoustic model.')
+        '--am_config', type=str, default="", help='Config of acoustic model.')
     parser.add_argument(
         '--am_ckpt',
         type=str,
@@ -195,7 +219,7 @@ def parse_args():
     parser.add_argument(
         "--text",
         type=str,
-        default="每当你觉得，想要批评什么人的时候，你切要记着，这个世界上的人，并非都具备你禀有的条件。",
+        default="澶╃尗绮剧伒",
         help="text to synthesize, a line")
     parser.add_argument(
         "--ge2e_params_path", type=str, help="ge2e params path.")
@@ -205,7 +229,7 @@ def parse_args():
         default=False,
         help="whether to use ECAPA-TDNN as speaker encoder.")
     parser.add_argument(
-        "--ngpu", type=int, default=1, help="if ngpu=0, use cpu.")
+        "--ngpu", type=int, default=0, help="if ngpu=0, use cpu.")
     parser.add_argument(
         "--input-dir",
         type=str,
