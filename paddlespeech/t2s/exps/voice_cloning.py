@@ -15,12 +15,14 @@
 import argparse
 import os
 from pathlib import Path
+from pydub import AudioSegment as pd 
 
 import numpy as np
 import paddle
 import soundfile as sf
 import yaml
 from yacs.config import CfgNode
+import subprocess
 
 from paddlespeech.cli.vector import VectorExecutor
 from paddlespeech.t2s.exps.syn_utils import get_am_inference
@@ -75,8 +77,7 @@ def voice_cloning(args):
     output_dir.mkdir(parents=True, exist_ok=True)
     # input_dir = "D:\\workplaces\\PaddleModelData\\corpus"
     # input_dir = "D:\\wueryong\\onedrive\OneDrive - zut.edu.cn\\A_Doing\\corpus"
-    input_dir = "D:\\workplaces\\test\\liyanqun\\test"
-    input_dir = Path(input_dir)
+    audio_file_path = "D:\\workplaces\\test\\liyanqun\\test\\test.wav"
 
     # speaker encoder
     # if args.use_ecapa:
@@ -84,11 +85,39 @@ def voice_cloning(args):
     # warm up
     print(">>>>>>>")
     print()
+    
+    # get the dir's first file 
+    # audio_file=input_dir / os.listdir(input_dir)[0]
 
+    
+    audio_file_name = audio_file_path.split('\\')[-1].split(".")[0]
+    audio_file_dir = audio_file_path.split('\\')[-2]
+    
+    audio_file_attr = pd.from_file(audio_file_path, format='wav')
+    
+    # audio_file_processed = Path(audio_file_path_processed)
+    # audio_file_processed.mkdir(parents=True, exist_ok=True)
+    audio_file_path_processed = "" 
+    rate = audio_file_attr.frame_rate
+    channels = audio_file_attr.channels
+    flag = 0
+    if rate != 16000 or channels !=1:
+        audio_file_path_processed = audio_file_path.split(audio_file_name)[0] + "processed\\"
+        audio_file_path_transfered = Path(audio_file_path_processed)
+        audio_file_path_transfered.mkdir(parents=True, exist_ok=True)
+        audio_file_new_path =  audio_file_path_processed+audio_file_name + ".wav"
+        os.system("sox {} -r 16000 -b 16 -c 1 {}".format(audio_file_path , audio_file_new_path))
+        audio_file_path = audio_file_new_path
+        flag = 1 
+    # audio_file_path = input_dir + audio_file.name
+    # 复制一份wav文件保存audio_ok_name, 利用sox调整参数：通道-1 位-16 采样率-16k
+    # subprocess.call(["sox {} -r 16000 -b 16 -c 1 {}".format(str(audio_file), str(audio_file))], shell=True) 
+    # subprocess.call(["sox {} -r 16000 -b 16 -c 1 {}".format(input_dir.__str__()+"\\"+"record_20230225121113.wav", input_dir.__str__()+"\\"+"test.wav")], shell=True) 
+    
+    vec_executor(audio_file_path)
 
-     
+    # audio_file = Path(audio_file_path)
 
-    vec_executor(audio_file=input_dir / os.listdir(input_dir)[0])
     print(">>>>>ECAPA-TDNN Done!")
 
     print("ECAPA-TDNN Done!")
@@ -135,40 +164,39 @@ def voice_cloning(args):
         voc_config=voc_config,
         voc_ckpt=voc_ckpt,
         voc_stat=voc_stat)
+    # audio_file_name = audio_file_path_processed.split(".")[0]
+    # ref_audio_path = input_dir / name
+    # if args.use_ecapa:
+    
+    spk_emb = vec_executor(audio_file_path)
 
-    for name in os.listdir(input_dir):
-        utt_id = name.split(".")[0]
-        ref_audio_path = input_dir / name
-        # if args.use_ecapa:
-        spk_emb = vec_executor(audio_file=ref_audio_path)
-        spk_emb = paddle.to_tensor(spk_emb)
-        # GE2E
-        # else:
-        #     mel_sequences = p.extract_mel_partials(
-        #         p.preprocess_wav(ref_audio_path))
-        #     with paddle.no_grad():
-        #         spk_emb = speaker_encoder.embed_utterance(
-        #             paddle.to_tensor(mel_sequences))
-        with paddle.no_grad():
-            wav = voc_inference(am_inference(phone_ids, spk_emb=spk_emb))
+    spk_emb = paddle.to_tensor(spk_emb)
+    # GE2E
+    # else:
+    #     mel_sequences = p.extract_mel_partials(
+    #         p.preprocess_wav(ref_audio_path))
+    #     with paddle.no_grad():
+    #         spk_emb = speaker_encoder.embed_utterance(
+    #             paddle.to_tensor(mel_sequences))
+    with paddle.no_grad():
+        wav = voc_inference(am_inference(phone_ids, spk_emb=spk_emb))
 
-        sf.write(
-            str(output_dir / (utt_id + ".wav")),
-            wav.numpy(),
-            samplerate=am_config.fs)
-        print(f"{utt_id} done!")
+    sf.write(str(output_dir / (audio_file_name + ".wav")),
+        wav.numpy(),
+        samplerate=am_config.fs)
+    print(f"{audio_file_name} done!")
 
-    # generate 5 random_spk_emb
-    for i in range(5):
-        random_spk_emb = gen_random_embed(True)
-        utt_id = "random_spk_emb"
-        with paddle.no_grad():
-            wav = voc_inference(am_inference(phone_ids, spk_emb=random_spk_emb))
-        sf.write(
-            str(output_dir / (utt_id + "_" + str(i) + ".wav")),
-            wav.numpy(),
-            samplerate=am_config.fs)
-    print(f"{utt_id} done!")
+    # # generate 5 random_spk_emb
+    # for i in range(5):
+    #     random_spk_emb = gen_random_embed(True)
+    #     utt_id = "random_spk_emb"
+    #     with paddle.no_grad():
+    #         wav = voc_inference(am_inference(phone_ids, spk_emb=random_spk_emb))
+    #     sf.write(
+    #         str(output_dir / (utt_id + "_" + str(i) + ".wav")),
+    #         wav.numpy(),
+    #         samplerate=am_config.fs)
+    # print(f"{utt_id} done!")
 
 
 def parse_args():
