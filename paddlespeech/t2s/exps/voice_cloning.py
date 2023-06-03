@@ -77,7 +77,7 @@ def voice_cloning(args):
     output_dir.mkdir(parents=True, exist_ok=True)
     # input_dir = "D:\\workplaces\\PaddleModelData\\corpus"
     # input_dir = "D:\\wueryong\\onedrive\OneDrive - zut.edu.cn\\A_Doing\\corpus"
-    audio_file_path = "D:\\workplaces\\test\\liyanqun\\test\\test.wav"
+    audio_file_path = "D:\\workplaces\\test\\liyanqun\\liyanqunSingle16.wav"
 
     # speaker encoder
     # if args.use_ecapa:
@@ -146,7 +146,7 @@ def voice_cloning(args):
     frontend = Frontend(phone_vocab_path=phones_dict)
     print("frontend done!")
 
-    sentence = "今年天气怎么样？"
+    sentence = "小爱同学，今天的天气怎么样？"
     input_ids = frontend.get_input_ids(sentence, merge_sentences=True)
     phone_ids = input_ids["phone_ids"][0]
 
@@ -168,23 +168,23 @@ def voice_cloning(args):
     # ref_audio_path = input_dir / name
     # if args.use_ecapa:
     
-    spk_emb = vec_executor(audio_file_path)
+    # spk_emb = vec_executor(audio_file_path)
 
-    spk_emb = paddle.to_tensor(spk_emb)
-    # GE2E
-    # else:
-    #     mel_sequences = p.extract_mel_partials(
-    #         p.preprocess_wav(ref_audio_path))
-    #     with paddle.no_grad():
-    #         spk_emb = speaker_encoder.embed_utterance(
-    #             paddle.to_tensor(mel_sequences))
-    with paddle.no_grad():
-        wav = voc_inference(am_inference(phone_ids, spk_emb=spk_emb))
+    # spk_emb = paddle.to_tensor(spk_emb)
+    # # GE2E
+    # # else:
+    # #     mel_sequences = p.extract_mel_partials(
+    # #         p.preprocess_wav(ref_audio_path))
+    # #     with paddle.no_grad():
+    # #         spk_emb = speaker_encoder.embed_utterance(
+    # #             paddle.to_tensor(mel_sequences))
+    # with paddle.no_grad():
+    #     wav = voc_inference(am_inference(phone_ids, spk_emb=spk_emb))
 
-    sf.write(str(output_dir / (audio_file_name + ".wav")),
-        wav.numpy(),
-        samplerate=am_config.fs)
-    print(f"{audio_file_name} done!")
+    # sf.write(str(output_dir / (audio_file_name + ".wav")),
+    #     wav.numpy(),
+    #     samplerate=am_config.fs)
+    # print(f"{audio_file_name} done!")
 
     # # generate 5 random_spk_emb
     # for i in range(5):
