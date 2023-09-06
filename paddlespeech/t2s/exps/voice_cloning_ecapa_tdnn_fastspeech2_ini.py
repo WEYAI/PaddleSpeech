@@ -18,7 +18,7 @@ from paddlespeech.t2s.frontend.zh_frontend import Frontend
 from paddlespeech.t2s.utils import str2bool
 from paddlespeech.vector.exps.ge2e.audio_processor import SpeakerVerificationPreprocessor
 from paddlespeech.vector.models.lstm_speaker_encoder import LSTMSpeakerEncoder
-
+# 第一个算法.
 
 #实例化configParser对象
 config = configparser.ConfigParser()
@@ -33,9 +33,6 @@ config.read(path)
 # print(output_dir)
 # sentence = config['P']['sentence']
 # print(sentence)
-
-
-
 def gen_random_embed(use_ecapa: bool=False):
     if use_ecapa:
         # Randomly generate numbers of -25 ~ 25, 192 is the dim of spk_emb
@@ -81,7 +78,6 @@ def voice_cloning(audio_file_path,output_dir,sentence):
     voc_config = 'D:/workplaces/PaddleModelData/pwg_aishell3_ckpt_0.5/default.yaml'
     voc_ckpt = 'D:/workplaces/PaddleModelData/pwg_aishell3_ckpt_0.5/snapshot_iter_1000000.pdz'
     voc_stat = 'D:/workplaces/PaddleModelData/pwg_aishell3_ckpt_0.5/feats_stats.npy'
-    output_dir = "D:/workplaces/test/make/output"
     ge2e_params_path = ""
 
     # Init body.
@@ -267,20 +263,14 @@ def parse_args():
     # sentence = "我在天猫网站上买了一个天猫精灵，我使用天猫精灵听天气预报！"
     # voice_cloning(input_dir,output_dir,sentence)
 
-# class Solution(object):
-#     def divide(self, dividend, divisor):
-#         """
-#         :type dividend: int
-#         :type divisor: int
-#         :rtype: int
-#         """
 
 
 
 if __name__ == "__main__":
     
     # input_dir = "D:\\workplaces\\test\\liyanqun\\test\\test.wav"
-    input_dir = "C:\\Users\\w1366\\Documents\\corpus\\A2_0.wav"
+    
+    input_dir = "C:\\Users\\w1366\\Documents\\语音特征提取.wav"
     output_dir = "C:\\Users\\w1366\\Desktop\\wueryong"
     sentence = "你好小爱同学，今天的天气怎么样?"
     print(voice_cloning(input_dir,output_dir,sentence))

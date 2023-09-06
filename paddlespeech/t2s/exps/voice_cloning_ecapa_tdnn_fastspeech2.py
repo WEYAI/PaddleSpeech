@@ -77,7 +77,8 @@ def voice_cloning(args):
     output_dir.mkdir(parents=True, exist_ok=True)
     # input_dir = "D:\\workplaces\\PaddleModelData\\corpus"
     # input_dir = "D:\\wueryong\\onedrive\OneDrive - zut.edu.cn\\A_Doing\\corpus"
-    audio_file_path = "D:\\workplaces\\test\\liyanqun\\liyanqunSingle16.wav"
+    # audio_file_path = "D:\\workplaces\\test\\liyanqun\\liyanqunSingle16.wav"
+    audio_file_path = "C:\\Users\\w1366\\Documents\\语音特征提取.wav"
 
     # speaker encoder
     # if args.use_ecapa:
@@ -137,24 +138,20 @@ def voice_cloning(args):
         voc_config=voc_config,
         voc_ckpt=voc_ckpt,
         voc_stat=voc_stat)
-    # audio_file_name = audio_file_path_processed.split(".")[0]
-    # ref_audio_path = input_dir / name
-    # if args.use_ecapa:
-    
+    audio_file_name = audio_file_path_processed.split(".")[0]
+    ref_audio_path = input_dir / name
+    mel_sequences = p.extract_mel_partials(
+        p.preprocess_wav(ref_audio_path))
+    with paddle.no_grad():
+        spk_emb = speaker_encoder.embed_utterance(
+            paddle.to_tensor(mel_sequences))
+    with paddle.no_grad():
+        wav = voc_inference(am_inference(phone_ids, spk_emb=spk_emb))
 
-    # # else:
-    # #     mel_sequences = p.extract_mel_partials(
-    # #         p.preprocess_wav(ref_audio_path))
-    # #     with paddle.no_grad():
-    # #         spk_emb = speaker_encoder.embed_utterance(
-    # #             paddle.to_tensor(mel_sequences))
-    # with paddle.no_grad():
-    #     wav = voc_inference(am_inference(phone_ids, spk_emb=spk_emb))
-
-    # sf.write(str(output_dir / (audio_file_name + ".wav")),
-    #     wav.numpy(),
-    #     samplerate=am_config.fs)
-    # print(f"{audio_file_name} done!")
+    sf.write(str(output_dir / (audio_file_name + ".wav")),
+        wav.numpy(),
+        samplerate=am_config.fs)
+    print(f"{audio_file_name} done!")
 
     # # generate 5 random_spk_emb
     # for i in range(5):

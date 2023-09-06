@@ -1,16 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# coding=utf-8
 import argparse
 import os
 from pathlib import Path
@@ -30,20 +18,38 @@ from paddlespeech.t2s.frontend.zh_frontend import Frontend
 from paddlespeech.t2s.utils import str2bool
 from paddlespeech.vector.exps.ge2e.audio_processor import SpeakerVerificationPreprocessor
 from paddlespeech.vector.models.lstm_speaker_encoder import LSTMSpeakerEncoder
+#实例化configParser对象
+# config = configparser.ConfigParser()
+# path = os.path.abspath(".") + '\\voice_cloning.ini'
+# #read读取ini文件,设定编解码方式
+# #config.read('voice_cloning.ini', encoding='utf-8')
+# config.read(path)
 
-def voice_cloning(args):
-    
+# audio_file_path = config['P']['audio_file_path']
+# print(audio_file_path)
+# output_dir = config['P']['output_dir']
+# print(output_dir)
+# sentence = config['P']['sentence']
+# print(sentence)
+# 第二个算法。
+def voice_cloning(audio_file_path,output_dir,sentence):
+    args = parse_args()
+    if args.ngpu == 0:
+        paddle.set_device("cpu")
+    elif args.ngpu > 0:
+        paddle.set_device("gpu")
+    else:
+        print("ngpu should >= 0 !") 
     am ='fastspeech2_aishell3'
-    am_config = "D:\\workplaces\\PaddleModelData\\tacotron2_aishell3_ckpt_vc0_0.2.0\\default.yaml"
-    am_ckpt = 'D:\\workplaces\\PaddleModelData\\tacotron2_aishell3_ckpt_vc0_0.2.0\\snapshot_iter_37596.pdz'
-    am_stat = 'D:\\workplaces\\PaddleModelData\\tacotron2_aishell3_ckpt_vc0_0.2.0\\speech_stats.npy'
-    phones_dict = "D:\\workplaces\\PaddleModelData\\tacotron2_aishell3_ckpt_vc0_0.2.0\\phone_id_map.txt"
-    
+    am_config = "D:\\workplaces\\PaddleModelData\\fastspeech2_nosil_aishell3_vc1_ckpt_0.5\\default.yaml"
+    am_ckpt = 'D:\\workplaces\\PaddleModelData\\fastspeech2_nosil_aishell3_vc1_ckpt_0.5\\snapshot_iter_96400.pdz'
+    am_stat = 'D:\\workplaces\\PaddleModelData\\fastspeech2_nosil_aishell3_vc1_ckpt_0.5\\speech_stats.npy'
+    phones_dict = "D:\\workplaces\\PaddleModelData\\fastspeech2_nosil_aishell3_vc1_ckpt_0.5\\phone_id_map.txt"
+
     voc = 'pwgan_aishell3'
     voc_config = 'D:/workplaces/PaddleModelData/pwg_aishell3_ckpt_0.5/default.yaml'
     voc_ckpt = 'D:/workplaces/PaddleModelData/pwg_aishell3_ckpt_0.5/snapshot_iter_1000000.pdz'
     voc_stat = 'D:/workplaces/PaddleModelData/pwg_aishell3_ckpt_0.5/feats_stats.npy'
-    output_dir = "D:/workplaces/test/make/output"
     ge2e_params_path = "D:/workplaces/PaddleModelData/ge2e_ckpt_0.3/step-3000000.pdparams"
 
     # Init body.
@@ -60,18 +66,6 @@ def voice_cloning(args):
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    # input_dir = "D:\\workplaces\\PaddleModelData\\corpus"
-    # input_dir = "D:\\wueryong\\onedrive\OneDrive - zut.edu.cn\\A_Doing\\corpus"
-    audio_file_path = "D:\\workplaces\\test\\liyanqun\\liyanqunSingle16.wav"
-
-    # speaker encoder
-    
-    # warm up
-    # print(">>>>>>>")
-    # print()
-    
-    # get the dir's first file 
-    # audio_file=input_dir / os.listdir(input_dir)[0]
 
     
     audio_file_name = audio_file_path.split('\\')[-1].split(".")[0]
@@ -126,7 +120,6 @@ def voice_cloning(args):
     frontend = Frontend(phone_vocab_path=phones_dict)
     print("frontend done!")
 
-    sentence = "小爱同学，今天的天气怎么样？"
     input_ids = frontend.get_input_ids(sentence, merge_sentences=True)
     phone_ids = input_ids["phone_ids"][0]
 
@@ -144,8 +137,9 @@ def voice_cloning(args):
         voc_config=voc_config,
         voc_ckpt=voc_ckpt,
         voc_stat=voc_stat)
-    if flag == 1:
-        audio_file_name = audio_file_path_processed.split(".")[0]
+    # bug for "audio_file_name  'C:\\Users\\w1366\\Documents\\processed\\ "
+    # if flag == 1:
+    #     audio_file_name = audio_file_path_processed.split(".")[0]
     mel_sequences = p.extract_mel_partials(
         p.preprocess_wav(audio_file_path))
     with paddle.no_grad():
@@ -227,20 +221,10 @@ def parse_args():
 
     args = parser.parse_args()
     return args
-
-
-def main():
-    args = parse_args()
-
-    if args.ngpu == 0:
-        paddle.set_device("cpu")
-    elif args.ngpu > 0:
-        paddle.set_device("gpu")
-    else:
-        print("ngpu should >= 0 !")
-
-    voice_cloning(args)
-
-
 if __name__ == "__main__":
-    main()
+    # audio_file_path = "C:\\Users\\w1366\\Documents\\语音特征提取.wav"
+    input_dir = "C:\\Users\\w1366\\Documents\\fy_test.wav"
+    # input_dir = "C:\\Users\\w1366\\Documents\\coaudio_file_path = "C:\\Users\\w1366\\Documents\\语音特征提取.wav"rpus\\A2_0.wav"
+    output_dir = "C:\\Users\\w1366\\Desktop\\wueryong"
+    sentence = "你好小爱同学，今天的天气怎么样?"
+    print(voice_cloning(input_dir,output_dir,sentence))
