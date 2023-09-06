@@ -78,6 +78,12 @@ Also, there is a `metadata.jsonl` in each subfolder. It is a table-like file tha
 Pretrained FastSpeech2 model with no silence in the edge of audios:
 - [fastspeech2_canton_ckpt_1.4.0.zip](https://paddlespeech.bj.bcebos.com/Parakeet/released_models/fastspeech2/fastspeech2_canton_ckpt_1.4.0.zip)
 
+The static model can be downloaded here:
+- [fastspeech2_canton_static_1.4.0.zip](https://paddlespeech.bj.bcebos.com/Parakeet/released_models/fastspeech2/fastspeech2_canton_static_1.4.0.zip)
+
+The ONNX model can be downloaded here:  
+- [fastspeech2_canton_onnx_1.4.0.zip](https://paddlespeech.bj.bcebos.com/Parakeet/released_models/fastspeech2/fastspeech2_canton_onnx_1.4.0.zip)
+
 FastSpeech2 checkpoint contains files listed below.
 
 ```text
@@ -96,7 +102,7 @@ Download the pretrained parallel wavegan model from [pwg_aishell3_ckpt_0.5.zip](
 unzip pwg_aishell3_ckpt_0.5.zip
 ```
 
-You can use the following scripts to synthesize for `${BIN_DIR}/../sentences_canton.txt` using pretrained fastspeech2 and parallel wavegan models.
+You can use the following scripts to synthesize for `${BIN_DIR}/../../assets/sentences_canton.txt` using pretrained fastspeech2 and parallel wavegan models.
 ```bash
 source path.sh
 
@@ -112,7 +118,7 @@ python3 ${BIN_DIR}/../synthesize_e2e.py \
   --voc_ckpt=pwg_aishell3_ckpt_0.5/snapshot_iter_1000000.pdz \
   --voc_stat=pwg_aishell3_ckpt_0.5/feats_stats.npy \
   --lang=canton \
-  --text=${BIN_DIR}/../sentences_canton.txt \
+  --text=${BIN_DIR}/../../assets/sentences_canton.txt \
   --output_dir=exp/default/test_e2e \
   --phones_dict=fastspeech2_canton_ckpt_1.4.0/phone_id_map.txt \
   --speaker_dict=fastspeech2_canton_ckpt_1.4.0/speaker_id_map.txt \

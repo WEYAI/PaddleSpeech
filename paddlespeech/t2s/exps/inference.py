@@ -45,6 +45,7 @@ def parse_args():
             'fastspeech2_male-zh',
             'fastspeech2_male-en',
             'fastspeech2_male-mix',
+            'fastspeech2_canton',
         ],
         help='Choose acoustic model type of tts task.')
     parser.add_argument(
@@ -111,7 +112,7 @@ def parse_args():
     parser.add_argument(
         "--device",
         default="gpu",
-        choices=["gpu", "cpu"],
+        choices=["gpu", "cpu", "xpu"],
         help="Device selected for inference.", )
     parser.add_argument('--cpu_threads', type=int, default=1)
 

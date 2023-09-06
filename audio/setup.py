@@ -34,12 +34,14 @@ from tools import setup_helpers
 
 ROOT_DIR = Path(__file__).parent.resolve()
 
-VERSION = '1.1.0'
+VERSION = '1.2.0'
 COMMITID = 'none'
 
 base = [
-    "kaldiio",
+    # paddleaudio align with librosa==0.8.1, which need numpy==1.23.x
     "librosa==0.8.1",
+    "numpy==1.23.5",
+    "kaldiio",
     "pathos",
     "pybind11",
     "parameterized",

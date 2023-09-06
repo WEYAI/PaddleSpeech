@@ -65,6 +65,10 @@ The input of this demo should be a text of the specific language that can be pas
         paddlespeech tts --am fastspeech2_male --voc pwgan_male --lang mix --input "我们的声学模型使用了 Fast Speech Two, 声码器使用了 Parallel Wave GAN and Hifi GAN." --output male_mix_fs2_pwgan.wav
         paddlespeech tts --am fastspeech2_male --voc hifigan_male --lang mix --input "我们的声学模型使用了 Fast Speech Two, 声码器使用了 Parallel Wave GAN and Hifi GAN." --output male_mix_fs2_hifigan.wav
         ```
+    - Cantonese
+        ```bash
+        paddlespeech tts --am fastspeech2_canton --voc pwgan_aishell3 --input "各个国家有各个国家嘅国歌" --lang canton --spk_id 10
+        ```
     - Use ONNXRuntime infer：
         ```bash
         paddlespeech tts --input "你好，欢迎使用百度飞桨深度学习框架！" --output default.wav --use_onnx True
@@ -84,6 +88,7 @@ The input of this demo should be a text of the specific language that can be pas
         paddlespeech tts --am fastspeech2_male --voc hifigan_male --lang en --input "Life was like a box of chocolates, you never know what you're gonna get." --output male_en_fs2_hifigan.wav --use_onnx True
         paddlespeech tts --am fastspeech2_mix --voc hifigan_male --lang mix --input "热烈欢迎您在 Discussions 中提交问题，并在 Issues 中指出发现的 bug。此外，我们非常希望您参与到 Paddle Speech 的开发中！" --output male_fs2_hifigan.wav --use_onnx True
         paddlespeech tts --am fastspeech2_mix --voc pwgan_csmsc --lang mix --spk_id 174 --input "热烈欢迎您在 Discussions 中提交问题，并在 Issues 中指出发现的 bug。此外，我们非常希望您参与到 Paddle Speech 的开发中！" --output mix_fs2_pwgan_csmsc_spk174.wav --use_onnx True
+        paddlespeech tts --am fastspeech2_canton --voc pwgan_aishell3 --lang canton --spk_id 10 --input "各个国家有各个国家嘅国歌" --output output_canton.wav --use_onnx True
         ```
 
   Usage:
@@ -178,6 +183,7 @@ Here is a list of pretrained models released by PaddleSpeech that can be used by
   |       fastspeech2_male       |    zh    |
   |       fastspeech2_male       |    en    |
   |       fastspeech2_male       |   mix    |
+  |       fastspeech2_canton     |  canton  |
 
 - Vocoder
   | Model | Language |

@@ -27,7 +27,10 @@ from paddlespeech.s2t.models.wav2vec2.processing.speech_augmentation import Spec
 from paddlespeech.s2t.modules.ctc import CTCDecoderBase as CTC
 from paddlespeech.s2t.modules.initializer import DefaultInitializerContext
 from paddlespeech.s2t.utils.ctc_utils import remove_duplicates_and_blank
+from paddlespeech.s2t.utils.log import Log
 from paddlespeech.s2t.utils.utility import log_add
+
+logger = Log(__name__).getlog()
 
 
 class Wav2vec2ASR(nn.Layer):
@@ -185,7 +188,7 @@ class Wav2vec2ASR(nn.Layer):
         x_lens = x.shape[1]
         ctc_probs = self.ctc.log_softmax(x)  # (B, maxlen, vocab_size)
         topk_prob, topk_index = ctc_probs.topk(1, axis=2)  # (B, maxlen, 1)
-        topk_index = topk_index.view(batch_size, x_lens)  # (B, maxlen)
+        topk_index = topk_index.view([batch_size, x_lens])  # (B, maxlen)
 
         hyps = [hyp.tolist() for hyp in topk_index]
         hyps = [remove_duplicates_and_blank(hyp) for hyp in hyps]

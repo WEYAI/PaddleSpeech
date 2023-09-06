@@ -23,7 +23,7 @@ paddlespeech_feat
 pandas
 pattern_singleton
 ppdiffusers>=0.9.0
-praatio>=5.0.0
+praatio>=5.0.0, <=5.1.1
 prettytable
 pypinyin-dict
 pypinyin<=0.44.0
@@ -38,8 +38,8 @@ sphinx-markdown-tables
 sphinx_rtd_theme
 textgrid
 timer
-ToJyutping
-typeguard
+ToJyutping==0.2.1
+typeguard==2.13.3
 webrtcvad
 websockets
 yacs~=0.1.8

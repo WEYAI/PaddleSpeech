@@ -13,6 +13,7 @@
 # limitations under the License.
 import argparse
 from pathlib import Path
+from pprint import pprint
 
 import paddle
 import soundfile as sf
@@ -24,6 +25,7 @@ from paddlespeech.t2s.exps.syn_utils import am_to_static
 from paddlespeech.t2s.exps.syn_utils import get_am_inference
 from paddlespeech.t2s.exps.syn_utils import get_frontend
 from paddlespeech.t2s.exps.syn_utils import get_sentences
+from paddlespeech.t2s.exps.syn_utils import get_sentences_svs
 from paddlespeech.t2s.exps.syn_utils import get_voc_inference
 from paddlespeech.t2s.exps.syn_utils import run_frontend
 from paddlespeech.t2s.exps.syn_utils import voc_to_static
@@ -44,20 +46,18 @@ def evaluate(args):
     print(am_config)
     print(voc_config)
 
-    sentences = get_sentences(text_file=args.text, lang=args.lang)
-
     # frontend
     frontend = get_frontend(
         lang=args.lang,
         phones_dict=args.phones_dict,
         tones_dict=args.tones_dict,
+        pinyin_phone=args.pinyin_phone,
         use_rhy=args.use_rhy)
     print("frontend done!")
 
     # acoustic model
     am_name = args.am[:args.am.rindex('_')]
     am_dataset = args.am[args.am.rindex('_') + 1:]
-
     am_inference = get_am_inference(
         am=args.am,
         am_config=am_config,
@@ -65,8 +65,10 @@ def evaluate(args):
         am_stat=args.am_stat,
         phones_dict=args.phones_dict,
         tones_dict=args.tones_dict,
-        speaker_dict=args.speaker_dict)
+        speaker_dict=args.speaker_dict,
+        speech_stretchs=args.speech_stretchs, )
     print("acoustic model done!")
+
     # vocoder
     voc_inference = get_voc_inference(
         voc=args.voc,
@@ -77,6 +79,7 @@ def evaluate(args):
 
     # whether dygraph to static
     if args.inference_dir:
+        print("convert am and voc to static model.")
         # acoustic model
         am_inference = am_to_static(
             am_inference=am_inference,
@@ -91,6 +94,7 @@ def evaluate(args):
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+
     merge_sentences = False
     # Avoid not stopping at the end of a sub sentence when tacotron2_ljspeech dygraph to static graph
     # but still not stopping in the end (NOTE by yuantian01 Feb 9 2022)
@@ -101,39 +105,76 @@ def evaluate(args):
     if am_name == 'speedyspeech':
         get_tone_ids = True
 
+    # wav samples
     N = 0
+    # inference time cost
     T = 0
+
+    # [(uid, text), ]
+    if am_name == 'diffsinger':
+        sentences = get_sentences_svs(text_file=args.text)
+    else:
+        sentences = get_sentences(text_file=args.text, lang=args.lang)
+
     for utt_id, sentence in sentences:
+        print(f"{utt_id} {sentence}")
         with timer() as t:
+            if am_name == "diffsinger":
+                text = ""
+                svs_input = sentence
+            else:
+                text = sentence
+                svs_input = None
+
+            # frontend
             frontend_dict = run_frontend(
                 frontend=frontend,
-                text=sentence,
+                text=text,
                 merge_sentences=merge_sentences,
                 get_tone_ids=get_tone_ids,
-                lang=args.lang)
+                lang=args.lang,
+                svs_input=svs_input)
             phone_ids = frontend_dict['phone_ids']
+            # pprint(f"{utt_id} {phone_ids}")
+
             with paddle.no_grad():
                 flags = 0
                 for i in range(len(phone_ids)):
+                    # sub phone, split by `sp` or punctuation.
                     part_phone_ids = phone_ids[i]
+
                     # acoustic model
                     if am_name == 'fastspeech2':
                         # multi speaker
                         if am_dataset in {"aishell3", "vctk", "mix", "canton"}:
-                            spk_id = paddle.to_tensor(args.spk_id)
+                            # multi-speaker
+                            spk_id = paddle.to_tensor([args.spk_id])
                             mel = am_inference(part_phone_ids, spk_id)
                         else:
+                            # single-speaker
                             mel = am_inference(part_phone_ids)
                     elif am_name == 'speedyspeech':
                         part_tone_ids = frontend_dict['tone_ids'][i]
                         if am_dataset in {"aishell3", "vctk", "mix"}:
-                            spk_id = paddle.to_tensor(args.spk_id)
+                            # multi-speaker
+                            spk_id = paddle.to_tensor([args.spk_id])
                             mel = am_inference(part_phone_ids, part_tone_ids,
                                                spk_id)
                         else:
+                            # single-speaker
                             mel = am_inference(part_phone_ids, part_tone_ids)
                     elif am_name == 'tacotron2':
                         mel = am_inference(part_phone_ids)
+                    elif am_name == 'diffsinger':
+                        part_note_ids = frontend_dict['note_ids'][i]
+                        part_note_durs = frontend_dict['note_durs'][i]
+                        part_is_slurs = frontend_dict['is_slurs'][i]
+                        mel = am_inference(
+                            text=part_phone_ids,
+                            note=part_note_ids,
+                            note_dur=part_note_durs,
+                            is_slur=part_is_slurs, )
+
                     # vocoder
                     wav = voc_inference(mel)
                     if flags == 0:
@@ -141,17 +182,23 @@ def evaluate(args):
                         flags = 1
                     else:
                         wav_all = paddle.concat([wav_all, wav])
+
         wav = wav_all.numpy()
         N += wav.size
         T += t.elapse
+
+        # samples per second
         speed = wav.size / t.elapse
+        # generate one second wav need `RTF` seconds
         rtf = am_config.fs / speed
         print(
             f"{utt_id}, mel: {mel.shape}, wave: {wav.shape}, time: {t.elapse}s, Hz: {speed}, RTF: {rtf}."
         )
+
         sf.write(
             str(output_dir / (utt_id + ".wav")), wav, samplerate=am_config.fs)
         print(f"{utt_id} done!")
+
     print(f"generation speed: {N / T}Hz, RTF: {am_config.fs / (N / T) }")
 
 
@@ -178,6 +225,7 @@ def parse_args():
             'fastspeech2_male-zh',
             'fastspeech2_male-en',
             'fastspeech2_male-mix',
+            'diffsinger_opencpop',
         ],
         help='Choose acoustic model type of tts task.')
     parser.add_argument(
@@ -223,6 +271,8 @@ def parse_args():
             'wavernn_csmsc',
             'pwgan_male',
             'hifigan_male',
+            'pwgan_opencpop',
+            'hifigan_opencpop',
         ],
         help='Choose vocoder type of tts task.')
     parser.add_argument(
@@ -240,6 +290,7 @@ def parse_args():
         '--lang',
         type=str,
         default='zh',
+        choices=['zh', 'en', 'mix', 'canton', 'sing'],
         help='Choose model language. zh or en or mix')
 
     parser.add_argument(
@@ -248,7 +299,13 @@ def parse_args():
         default=None,
         help="dir to save inference models")
     parser.add_argument(
-        "--ngpu", type=int, default=1, help="if ngpu == 0, use cpu.")
+        "--ngpu", type=int, default=1, help="if ngpu == 0, use cpu or xpu.")
+    parser.add_argument(
+        "--nxpu",
+        type=int,
+        default=0,
+        help="if wish to use xpu, set ngpu == 0 and nxpu > 0, and if ngpu == 0 and nxpu == 0, use cpu."
+    )
     parser.add_argument(
         "--text",
         type=str,
@@ -259,6 +316,17 @@ def parse_args():
         type=str2bool,
         default=False,
         help="run rhythm frontend or not")
+    parser.add_argument(
+        "--pinyin_phone",
+        type=str,
+        default=None,
+        help="pinyin to phone map file, using on sing_frontend.")
+    parser.add_argument(
+        "--speech_stretchs",
+        type=str,
+        default=None,
+        help="The min and max values of the mel spectrum, using on diffusion of diffsinger."
+    )
 
     args = parser.parse_args()
     return args
@@ -267,12 +335,14 @@ def parse_args():
 def main():
     args = parse_args()
 
-    if args.ngpu == 0:
-        paddle.set_device("cpu")
-    elif args.ngpu > 0:
+    if args.ngpu > 0:
         paddle.set_device("gpu")
+    elif args.nxpu > 0:
+        paddle.set_device("xpu")
+    elif args.ngpu == 0 and args.nxpu == 0:
+        paddle.set_device("cpu")
     else:
-        print("ngpu should >= 0 !")
+        print("ngpu or nxpu should >= 0 !")
 
     evaluate(args)
 

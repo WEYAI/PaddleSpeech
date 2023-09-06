@@ -43,6 +43,7 @@ from paddlespeech.s2t.modules.ctc import CTCDecoderBase
 from paddlespeech.s2t.modules.decoder import BiTransformerDecoder
 from paddlespeech.s2t.modules.decoder import TransformerDecoder
 from paddlespeech.s2t.modules.encoder import ConformerEncoder
+from paddlespeech.s2t.modules.encoder import SqueezeformerEncoder
 from paddlespeech.s2t.modules.encoder import TransformerEncoder
 from paddlespeech.s2t.modules.initializer import DefaultInitializerContext
 from paddlespeech.s2t.modules.loss import LabelSmoothingLoss
@@ -144,7 +145,6 @@ class U2BaseModel(ASRInterface, nn.Layer):
                                 text_lengths)
             ctc_time = time.time() - start
             #logger.debug(f"ctc time: {ctc_time}")
-
         if loss_ctc is None:
             loss = loss_att
         elif loss_att is None:
@@ -559,7 +559,7 @@ class U2BaseModel(ASRInterface, nn.Layer):
             [len(hyp[0]) for hyp in hyps], place=device,
             dtype=paddle.long)  # (beam_size,)
         hyps_pad, _ = add_sos_eos(hyps_pad, self.sos, self.eos, self.ignore_id)
-        hyps_lens = hyps_lens + 1  # Add <sos> at begining
+        hyps_lens = hyps_lens + 1  # Add <sos> at beginning
         logger.debug(
             f"hyps pad: {hyps_pad} {self.sos} {self.eos} {self.ignore_id}")
 
@@ -708,7 +708,7 @@ class U2BaseModel(ASRInterface, nn.Layer):
             hypothesis from ctc prefix beam search and one encoder output
         Args:
             hyps (paddle.Tensor): hyps from ctc prefix beam search, already
-                pad sos at the begining, (B, T)
+                pad sos at the beginning, (B, T)
             hyps_lens (paddle.Tensor): length of each hyp in hyps, (B)
             encoder_out (paddle.Tensor): corresponding encoder output, (B=1, T, D)
         Returns:
@@ -905,6 +905,9 @@ class U2Model(U2DecodeModel):
         elif encoder_type == 'conformer':
             encoder = ConformerEncoder(
                 input_dim, global_cmvn=global_cmvn, **configs['encoder_conf'])
+        elif encoder_type == 'squeezeformer':
+            encoder = SqueezeformerEncoder(
+                input_dim, global_cmvn=global_cmvn, **configs['encoder_conf'])
         else:
             raise ValueError(f"not support encoder type:{encoder_type}")
 
@@ -912,6 +915,8 @@ class U2Model(U2DecodeModel):
         decoder_type = configs.get('decoder', 'transformer')
         logger.debug(f"U2 Decoder type: {decoder_type}")
         if decoder_type == 'transformer':
+            configs['model_conf'].pop('reverse_weight', None)
+            configs['decoder_conf'].pop('r_num_blocks', None)
             decoder = TransformerDecoder(vocab_size,
                                          encoder.output_size(),
                                          **configs['decoder_conf'])
